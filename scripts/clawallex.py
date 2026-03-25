@@ -178,7 +178,7 @@ def format_402_quote(d, tool_name="pay"):
         },
     }, "Mode B Stage 1 complete — 402 Payment Required (this is expected, not an error).\n"
        "\n"
-       f"Next: sign an EIP-3009 transferWithAuthorization with your private key,\n"
+       f"Next: sign the EIP-3009 transferWithAuthorization using your own wallet/signing library,\n"
        f"then call '{tool_name}' again using the _stage2_template above. Fill in the <...> placeholders:\n"
        f"  --client-request-id '{d.get('client_request_id')}'  ← MUST be this exact value\n"
        f"  --x402-version 1\n"
@@ -713,113 +713,6 @@ def cmd_transactions(args):
         return output_error(f"Query failed: {e}")
 
 
-def cmd_sign_x402(args):
-    """Sign an x402 Mode B payment using EIP-3009 transferWithAuthorization."""
-    try:
-        from eth_account import Account
-        from eth_account.messages import encode_typed_data
-    except ImportError:
-        return output_error(
-            "eth_account is required for sign_x402. Install it: pip install eth_account"
-        )
-
-    quote = json.loads(args.quote) if isinstance(args.quote, str) else args.quote
-    required_fields = ["client_request_id", "payee_address", "asset_address", "x402_reference_id", "final_card_amount", "payable_amount"]
-    for f in required_fields:
-        if f not in quote or not quote[f]:
-            return output_error(f"Missing required quote field: {f}")
-
-    domain_names = {1: "USD Coin", 11155111: "USDC", 8453: "USD Coin", 84532: "USDC"}
-    domain_name = domain_names.get(args.chain_id)
-    if not domain_name:
-        return output_error(f"Unsupported chain_id: {args.chain_id}. Use 1 (ETH), 11155111 (Sepolia), or 8453 (BASE)")
-
-    pk = args.private_key if args.private_key.startswith("0x") else "0x" + args.private_key
-    account = Account.from_key(pk)
-
-    payee_address = quote["payee_address"]
-    asset_address = quote["asset_address"]
-    payable_amount = quote["payable_amount"]
-    max_amount = str(round(float(payable_amount) * 1_000_000))
-    now = int(time.time())
-    nonce = "0x" + os.urandom(32).hex()
-
-    full_message = {
-        "types": {
-            "EIP712Domain": [
-                {"name": "name", "type": "string"},
-                {"name": "version", "type": "string"},
-                {"name": "chainId", "type": "uint256"},
-                {"name": "verifyingContract", "type": "address"},
-            ],
-            "TransferWithAuthorization": [
-                {"name": "from", "type": "address"},
-                {"name": "to", "type": "address"},
-                {"name": "value", "type": "uint256"},
-                {"name": "validAfter", "type": "uint256"},
-                {"name": "validBefore", "type": "uint256"},
-                {"name": "nonce", "type": "bytes32"},
-            ],
-        },
-        "primaryType": "TransferWithAuthorization",
-        "domain": {
-            "name": domain_name,
-            "version": "2",
-            "chainId": args.chain_id,
-            "verifyingContract": asset_address,
-        },
-        "message": {
-            "from": account.address,
-            "to": payee_address,
-            "value": int(max_amount),
-            "validAfter": now - 60,
-            "validBefore": now + 3600,
-            "nonce": bytes.fromhex(nonce[2:]),
-        },
-    }
-
-    signable = encode_typed_data(full_message=full_message)
-    signed = account.sign_message(signable)
-    signature = signed.signature.hex()
-    if not signature.startswith("0x"):
-        signature = "0x" + signature
-
-    result = {
-        "client_request_id": quote["client_request_id"],
-        "x402_version": 1,
-        "payment_payload": {
-            "scheme": "exact",
-            "network": args.network,
-            "payload": {
-                "signature": signature,
-                "authorization": {
-                    "from": account.address,
-                    "to": payee_address,
-                    "value": max_amount,
-                    "validAfter": str(now - 60),
-                    "validBefore": str(now + 3600),
-                    "nonce": nonce,
-                },
-            },
-        },
-        "payment_requirements": {
-            "scheme": "exact",
-            "network": args.network,
-            "asset": asset_address,
-            "payTo": payee_address,
-            "maxAmountRequired": max_amount,
-            "extra": {"referenceId": quote["x402_reference_id"]},
-        },
-        "extra": {
-            "card_amount": quote["final_card_amount"],
-            "paid_amount": payable_amount,
-        },
-        "payer_address": account.address,
-    }
-
-    return output_success(result, "Stage 2 request body ready. Pass this directly to pay or subscribe command.")
-
-
 def cmd_x402_address(args):
     """Get x402 on-chain payee address."""
     client, err = require_credentials()
@@ -938,13 +831,6 @@ def main():
     p_tx.add_argument("--page", type=int)
     p_tx.add_argument("--page-size", dest="page_size", type=int)
 
-    # ── sign-x402 ──
-    p_sign = sub.add_parser("sign-x402", help="Sign x402 Mode B payment (EIP-3009)")
-    p_sign.add_argument("--private-key", dest="private_key", required=True, help="Agent wallet private key (hex)")
-    p_sign.add_argument("--quote", required=True, help="402 quote response as JSON string")
-    p_sign.add_argument("--chain-id", dest="chain_id", type=int, required=True, help="EIP-712 chainId: 1, 11155111, 8453")
-    p_sign.add_argument("--network", required=True, help="Chain network: ETH or BASE")
-
     # ── x402-address ──
     p_x402 = sub.add_parser("x402-address", help="Get x402 on-chain payee address")
     p_x402.add_argument("--chain", required=True)
@@ -968,7 +854,6 @@ def main():
         "card-balance": cmd_card_balance,
         "card-details": cmd_card_details,
         "transactions": cmd_transactions,
-        "sign-x402": cmd_sign_x402,
         "x402-address": cmd_x402_address,
     }
 

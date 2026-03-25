@@ -131,7 +131,7 @@ When the user wants to use Clawallex for the first time:
 
 ## Mode B Flow (x402 On-Chain, Two-Stage)
 
-Mode B is for **agents that hold their own wallet and private keys** (DeFi bots, autonomous purchasing agents). The agent signs on-chain transactions directly — no human intervention needed.
+Mode B is for **callers with self-custody wallets (agent or user)** (DeFi bots, autonomous purchasing agents). The agent signs on-chain transactions using its own signing system — no human intervention needed.
 
 **Stage 1 — Quote:**
 ```
@@ -145,7 +145,7 @@ Fee structure:
 - flash card: `fee_amount = issue_fee_amount + fx_fee_amount`
 - stream card: `fee_amount = issue_fee_amount + monthly_fee_amount + fx_fee_amount`
 
-**Agent signs** — construct an **EIP-3009 `transferWithAuthorization`** using your private key and the quote details.
+**Agent signs** — construct and sign an **EIP-3009 `transferWithAuthorization`** using your own wallet/signing library and the quote details. Only the resulting signature and your wallet address are needed for Stage 2.
 EIP-3009 enables gasless USDC transfers via off-chain signatures. The `authorization` fields map to:
 - `from`: your wallet address (the payer)
 - `to`: `payee_address` from Stage 1 (system receiving address)
@@ -203,7 +203,7 @@ pay --amount 200 --description "GPU rental" \
 
 ## Mode B Refill Flow (no 402 challenge)
 
-Mode B refill goes directly to x402 settle — no 402 challenge stage. Must call `x402-address` first to get `payee_address`.
+Mode B refill goes directly to x402 settle — no 402 challenge stage. Caller signs the EIP-3009 authorization independently using their own wallet/signing library; only the resulting signature and wallet address are submitted. Must call `x402-address` first to get `payee_address`.
 
 ```
 1. x402-address --chain ETH --token USDC                    → get payee_address
@@ -288,5 +288,5 @@ All commands return JSON:
 - **Stream card**: Created by `subscribe`. Reloadable, top up with `refill`.
 - **Wallet**: Your USDC balance. Funds all Mode A operations.
 - **Mode A** (mode_code=100): Wallet balance deduction (default).
-- **Mode B** (mode_code=200): x402 on-chain USDC payment for agents with own private keys. Two-stage (quote → sign → settle).
+- **Mode B** (mode_code=200): x402 on-chain USDC payment for callers with self-custody wallets (agent or user). Two-stage (quote → sign → settle). Agent signs EIP-3009 independently; only the signature and wallet address are passed to Stage 2.
 - **client_id**: The agent's stable identity, separate from the API Key. An agent can have multiple API Keys (for rotation/revocation), but `client_id` never changes. Cards and transactions are isolated per `client_id`. When switching to a new API Key, keep using the same `client_id` — the new key auto-binds on first request. Once bound, it cannot be changed (TOFU). Stored locally at `~/.clawallex/credentials.json`.

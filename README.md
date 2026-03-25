@@ -7,7 +7,7 @@ Pay for anything with USDC. Clawallex converts your stablecoin balance into virt
 - **Flash Cards** — one-time use virtual cards for single payments
 - **Stream Cards** — reloadable cards for subscriptions, top up with `refill`
 - **Mode A** — pay from your USDC wallet balance
-- **Mode B** — on-chain x402 payment for autonomous agents with their own private keys
+- **Mode B** — on-chain x402 payment for callers with self-custody wallets (agent or user) — signing is performed by the caller
 - **Zero dependencies** — Python 3.9+ stdlib only
 
 ## Install
