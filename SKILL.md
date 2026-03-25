@@ -94,8 +94,8 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 
 | User Intent | Command |
 |-------------|---------|
-| Pay for something | `pay --amount N --description "X"` |
-| Start subscription | `subscribe --amount N --description "X"` |
+| Pay for something | `pay --amount N --description "X" [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
+| Start subscription | `subscribe --amount N --description "X" [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
 | Top up card | `refill --card-id CID --amount N` |
 
 ### Wallet & Cards
@@ -106,7 +106,9 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 | Deposit funds | `recharge-addresses --wallet-id WID` |
 | List cards | `cards` — returns mode_code (100=Mode A, 200=Mode B) to determine refill path |
 | Check card balance | `card-balance --card-id CID` |
-| Get card details | `card-details --card-id CID` — returns masked_pan, expiry, balance, first_name, last_name, delivery_address, encrypted PAN/CVV |
+| Batch check balances | `batch-balances --card-ids CID1,CID2` — multiple cards in one call |
+| Update card controls | `update-card --card-id CID --client-request-id UUID [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
+| Get card details | `card-details --card-id CID` — returns masked_pan, expiry, balance, first_name, last_name, delivery_address, tx_limit, allowed_mcc, blocked_mcc, encrypted PAN/CVV |
 | View transactions | `transactions` |
 
 ### Advanced (x402 On-Chain)

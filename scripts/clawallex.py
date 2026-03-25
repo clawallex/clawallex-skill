@@ -465,6 +465,13 @@ def cmd_pay(args):
             "amount": amount,
             "client_request_id": args.client_request_id or str(uuid.uuid4()),
         }
+        # Risk controls (optional, apply to both Mode A and B)
+        if getattr(args, "tx_limit", None):
+            body["tx_limit"] = args.tx_limit
+        if getattr(args, "allowed_mcc", None):
+            body["allowed_mcc"] = args.allowed_mcc
+        if getattr(args, "blocked_mcc", None):
+            body["blocked_mcc"] = args.blocked_mcc
         if args.mode_code == 200:
             has_x402 = args.x402_version is not None or args.payment_payload or args.payment_requirements
             if has_x402:
@@ -523,6 +530,13 @@ def cmd_subscribe(args):
             "amount": amount,
             "client_request_id": args.client_request_id or str(uuid.uuid4()),
         }
+        # Risk controls (optional, apply to both Mode A and B)
+        if getattr(args, "tx_limit", None):
+            body["tx_limit"] = args.tx_limit
+        if getattr(args, "allowed_mcc", None):
+            body["allowed_mcc"] = args.allowed_mcc
+        if getattr(args, "blocked_mcc", None):
+            body["blocked_mcc"] = args.blocked_mcc
         if args.mode_code == 200:
             has_x402 = args.x402_version is not None or args.payment_payload or args.payment_requirements
             if has_x402:
@@ -688,6 +702,42 @@ def cmd_card_details(args):
 
 
 
+def cmd_batch_balances(args):
+    """Check balances for multiple cards."""
+    client, err = require_credentials()
+    if err:
+        return err
+    try:
+        card_ids = [cid.strip() for cid in args.card_ids.split(",")]
+        result = client.post("/payment/cards/balances", {"card_ids": card_ids})
+        return output_success(result, "Batch balances retrieved.")
+    except ApiError as e:
+        return output_error(f"Query failed [{e.code}]: {e}")
+    except Exception as e:
+        return output_error(f"Query failed: {e}")
+
+
+def cmd_update_card(args):
+    """Update card risk controls."""
+    client, err = require_credentials()
+    if err:
+        return err
+    try:
+        body = {"client_request_id": args.client_request_id}
+        if args.tx_limit:
+            body["tx_limit"] = args.tx_limit
+        if args.allowed_mcc:
+            body["allowed_mcc"] = args.allowed_mcc
+        if args.blocked_mcc:
+            body["blocked_mcc"] = args.blocked_mcc
+        result = client.post(f"/payment/cards/{args.card_id}/update", body)
+        return output_success(result, "Card update submitted.")
+    except ApiError as e:
+        return output_error(f"Update failed [{e.code}]: {e}")
+    except Exception as e:
+        return output_error(f"Update failed: {e}")
+
+
 def cmd_transactions(args):
     """View transaction history."""
     client, err = require_credentials()
@@ -745,6 +795,12 @@ def add_mode_b_args(parser):
     """Add common Mode B CLI arguments to a subparser."""
     parser.add_argument("--mode-code", dest="mode_code", type=int, default=100,
                         help="100=Mode A (wallet), 200=Mode B (x402)")
+    parser.add_argument("--tx-limit", dest="tx_limit",
+                        help="Per-transaction limit in USD (optional, default 100.0000)")
+    parser.add_argument("--allowed-mcc", dest="allowed_mcc",
+                        help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
+    parser.add_argument("--blocked-mcc", dest="blocked_mcc",
+                        help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
     parser.add_argument("--client-request-id", dest="client_request_id",
                         help="Idempotency key (auto-generated if omitted)")
     parser.add_argument("--chain-code", dest="chain_code", help="Chain code for Mode B Stage 1")
@@ -819,6 +875,18 @@ def main():
     p_cb = sub.add_parser("card-balance", help="Check card balance")
     p_cb.add_argument("--card-id", dest="card_id", required=True)
 
+    # ── batch-balances ──
+    p_bb = sub.add_parser("batch-balances", help="Check balances for multiple cards")
+    p_bb.add_argument("--card-ids", dest="card_ids", required=True, help="Comma-separated card IDs")
+
+    # ── update-card ──
+    p_uc = sub.add_parser("update-card", help="Update card risk controls")
+    p_uc.add_argument("--card-id", dest="card_id", required=True)
+    p_uc.add_argument("--client-request-id", dest="client_request_id", required=True, help="UUID idempotency key")
+    p_uc.add_argument("--tx-limit", dest="tx_limit", help="Per-transaction limit in USD")
+    p_uc.add_argument("--allowed-mcc", dest="allowed_mcc", help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
+    p_uc.add_argument("--blocked-mcc", dest="blocked_mcc", help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
+
     # ── card-details ──
     p_cd = sub.add_parser("card-details", help="Get card PAN/CVV/expiry (encrypted)")
     p_cd.add_argument("--card-id", dest="card_id", required=True)
@@ -852,6 +920,8 @@ def main():
         "recharge-addresses": cmd_recharge_addresses,
         "cards": cmd_cards,
         "card-balance": cmd_card_balance,
+        "batch-balances": cmd_batch_balances,
+        "update-card": cmd_update_card,
         "card-details": cmd_card_details,
         "transactions": cmd_transactions,
         "x402-address": cmd_x402_address,
