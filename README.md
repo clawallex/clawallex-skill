@@ -57,7 +57,9 @@ python3 scripts/clawallex.py wallet
 | `recharge-addresses` | Get on-chain deposit addresses |
 | `cards` | List virtual cards |
 | `card-balance` | Check a card's balance |
-| `card-details` | Get card PAN/CVV/expiry (encrypted) |
+| `batch-balances` | Check balances for multiple cards |
+| `update-card` | Update card risk controls (tx limit, MCC whitelist/blacklist) |
+| `card-details` | Get card details — masked PAN, expiry, balance, first/last name, delivery address, tx_limit, allowed/blocked MCC, encrypted PAN/CVV |
 | `transactions` | View transaction history |
 | `x402-address` | Get x402 on-chain payee address |
 
