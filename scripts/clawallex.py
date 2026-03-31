@@ -798,9 +798,9 @@ def add_mode_b_args(parser):
     parser.add_argument("--tx-limit", dest="tx_limit",
                         help="Per-transaction limit in USD (optional, default 100.0000)")
     parser.add_argument("--allowed-mcc", dest="allowed_mcc",
-                        help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
+                        help="MCC whitelist, comma-separated (e.g. '5734,5815')")
     parser.add_argument("--blocked-mcc", dest="blocked_mcc",
-                        help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
+                        help="MCC blacklist, comma-separated (e.g. '7995')")
     parser.add_argument("--client-request-id", dest="client_request_id",
                         help="Idempotency key (auto-generated if omitted)")
     parser.add_argument("--chain-code", dest="chain_code", help="Chain code for Mode B Stage 1")
@@ -884,8 +884,8 @@ def main():
     p_uc.add_argument("--card-id", dest="card_id", required=True)
     p_uc.add_argument("--client-request-id", dest="client_request_id", required=True, help="UUID idempotency key")
     p_uc.add_argument("--tx-limit", dest="tx_limit", help="Per-transaction limit in USD")
-    p_uc.add_argument("--allowed-mcc", dest="allowed_mcc", help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
-    p_uc.add_argument("--blocked-mcc", dest="blocked_mcc", help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
+    p_uc.add_argument("--allowed-mcc", dest="allowed_mcc", help="MCC whitelist, comma-separated")
+    p_uc.add_argument("--blocked-mcc", dest="blocked_mcc", help="MCC blacklist, comma-separated")
 
     # ── card-details ──
     p_cd = sub.add_parser("card-details", help="Get card PAN/CVV/expiry (encrypted)")

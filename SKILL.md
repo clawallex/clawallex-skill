@@ -95,6 +95,7 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 | User Intent | Command |
 |-------------|---------|
 | Pay for something | `pay --amount N --description "X"` |
+| Pay with custom expiry | `pay --amount N --description "X" --ttl SECONDS` — flash card only; default 86400 (24 h) |
 | Start subscription | `subscribe --amount N --description "X"` |
 | Top up card | `refill --card-id CID --amount N` |
 
